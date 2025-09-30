@@ -23,7 +23,8 @@ class Program
             Console.WriteLine("1. Lisää salasana");
             Console.WriteLine("2. Näytä salasanat");
             Console.WriteLine("3. Luo vahva salasana");
-            Console.WriteLine("4. Lopeta");
+            Console.WriteLine("4. Hae salasana");
+            Console.WriteLine("5. Lopeta");
             Console.Write("Valinta: ");
 
             string choice = Console.ReadLine();
@@ -40,6 +41,9 @@ class Program
                     GeneratePasswordMenu();
                     break;
                 case "4":
+                    SearchPassword();
+                    break;
+                case "5":
                     Console.WriteLine("Ohjelma sulkeutuu...");
                     return;
                 default:
@@ -77,7 +81,6 @@ class Program
         }
     }
 
-    // Varsinainen salasanageneraattori
     static string GeneratePassword(int length = 12)
     {
         const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
@@ -92,7 +95,6 @@ class Program
         return new string(password);
     }
 
-    // Tämä on käyttöliittymä salasanageneraattorille
     static void GeneratePasswordMenu()
     {
         Console.Write("Kuinka pitkä salasana luodaan? (oletus 12): ");
@@ -117,6 +119,37 @@ class Program
 
             File.AppendAllText(dataFile, $"{description}:{newPassword}\n");
             Console.WriteLine("Salasana tallennettu!");
+        }
+    }
+
+    // Hakutoiminto
+    static void SearchPassword()
+    {
+        if (!File.Exists(dataFile))
+        {
+            Console.WriteLine("Ei tallennettuja salasanoja.");
+            return;
+        }
+
+        Console.Write("Anna hakusana (esim. Gmail): ");
+        string search = Console.ReadLine();
+
+        string[] lines = File.ReadAllLines(dataFile);
+        bool found = false;
+
+        Console.WriteLine("\n--- Hakutulokset ---");
+        foreach (string line in lines)
+        {
+            if (line.ToLower().Contains(search.ToLower()))
+            {
+                Console.WriteLine(line);
+                found = true;
+            }
+        }
+
+        if (!found)
+        {
+            Console.WriteLine("Ei osumia hakusanalla.");
         }
     }
 }
