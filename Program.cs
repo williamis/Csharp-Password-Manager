@@ -1,17 +1,13 @@
 ﻿using System;
-using System.IO; // tarvitaan tiedostojen käsittelyyn
+using System.IO;
 
 class Program
 {
-    // Master-salasana ohjelman avaamiseen
     static string masterPassword = "salainen";
-
-    // Tiedoston nimi, johon salasanat tallennetaan
     static string dataFile = "passwords.txt";
 
     static void Main()
     {
-        // Kysytään master-salasana
         Console.Write("Anna master-salasana: ");
         string input = Console.ReadLine();
 
@@ -21,13 +17,13 @@ class Program
             return;
         }
 
-        // Päävalikko
         while (true)
         {
             Console.WriteLine("\n--- Password Manager ---");
             Console.WriteLine("1. Lisää salasana");
             Console.WriteLine("2. Näytä salasanat");
-            Console.WriteLine("3. Lopeta");
+            Console.WriteLine("3. Luo vahva salasana");
+            Console.WriteLine("4. Lopeta");
             Console.Write("Valinta: ");
 
             string choice = Console.ReadLine();
@@ -41,6 +37,9 @@ class Program
                     ShowPasswords();
                     break;
                 case "3":
+                    GeneratePasswordMenu();
+                    break;
+                case "4":
                     Console.WriteLine("Ohjelma sulkeutuu...");
                     return;
                 default:
@@ -50,7 +49,6 @@ class Program
         }
     }
 
-    // Metodi salasanan lisäämiselle
     static void AddPassword()
     {
         Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
@@ -59,15 +57,12 @@ class Program
         Console.Write("Anna salasana: ");
         string password = Console.ReadLine();
 
-        // Tallennetaan tiedostoon muodossa: kuvaus:salasana
         File.AppendAllText(dataFile, $"{description}:{password}\n");
         Console.WriteLine("Salasana tallennettu!");
     }
 
-    // Metodi salasanojen näyttämiselle
     static void ShowPasswords()
     {
-        // Jos tiedostoa ei ole olemassa, kerrotaan käyttäjälle
         if (!File.Exists(dataFile))
         {
             Console.WriteLine("Ei tallennettuja salasanoja.");
@@ -81,5 +76,49 @@ class Program
             Console.WriteLine(line);
         }
     }
+
+    // Varsinainen salasanageneraattori
+    static string GeneratePassword(int length = 12)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+        Random rand = new Random();
+        char[] password = new char[length];
+
+        for (int i = 0; i < length; i++)
+        {
+            password[i] = chars[rand.Next(chars.Length)];
+        }
+
+        return new string(password);
+    }
+
+    // Tämä on käyttöliittymä salasanageneraattorille
+    static void GeneratePasswordMenu()
+    {
+        Console.Write("Kuinka pitkä salasana luodaan? (oletus 12): ");
+        string input = Console.ReadLine();
+
+        int length = 12;
+        if (int.TryParse(input, out int parsedLength))
+        {
+            length = parsedLength;
+        }
+
+        string newPassword = GeneratePassword(length);
+        Console.WriteLine("Luotu salasana: " + newPassword);
+
+        Console.Write("Tallennetaanko tämä salasana tiedostoon? (k/e): ");
+        string save = Console.ReadLine();
+
+        if (save.ToLower() == "k")
+        {
+            Console.Write("Anna kuvaus (esim. Gmail): ");
+            string description = Console.ReadLine();
+
+            File.AppendAllText(dataFile, $"{description}:{newPassword}\n");
+            Console.WriteLine("Salasana tallennettu!");
+        }
+    }
 }
+
 
