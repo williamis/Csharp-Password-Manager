@@ -119,19 +119,34 @@ class Program
     }
 }
 
-    static string GeneratePassword(int length = 12)
+    static string GeneratePassword(int length = 12, bool useUpper = true, bool useLower = true, bool useDigits = true, bool useSymbols = true)
+{
+    const string lowers = "abcdefghijklmnopqrstuvwxyz";
+    const string uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const string digits = "0123456789";
+    const string symbols = "!@#$%^&*()-_=+[]{};:,.?/";
+
+    string alphabet = "";
+    if (useLower) alphabet += lowers;
+    if (useUpper) alphabet += uppers;
+    if (useDigits) alphabet += digits;
+    if (useSymbols) alphabet += symbols;
+
+    if (string.IsNullOrEmpty(alphabet))
+        alphabet = lowers; // varmistus, ettei jää tyhjäksi
+
+    // käytetään kryptografista RNG:tä
+    var bytes = new byte[length];
+    RandomNumberGenerator.Fill(bytes);
+
+    var sb = new StringBuilder(length);
+    for (int i = 0; i < length; i++)
     {
-        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
-        Random rand = new Random();
-        char[] password = new char[length];
-
-        for (int i = 0; i < length; i++)
-        {
-            password[i] = chars[rand.Next(chars.Length)];
-        }
-
-        return new string(password);
+        int idx = bytes[i] % alphabet.Length;
+        sb.Append(alphabet[idx]);
     }
+    return sb.ToString();
+}
 
     static void GeneratePasswordMenu()
     {
