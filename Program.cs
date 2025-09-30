@@ -152,6 +152,67 @@ class Program
             Console.WriteLine("Ei osumia hakusanalla.");
         }
     }
+// ============ AES-salauksen metodit ============
+
+// Johdetaan AES-avain käyttäjän master-salasanasta.
+// Tämä tehdään PBKDF2-algoritmilla (Rfc2898DeriveBytes).
+static byte[] DeriveKey(string masterPassword, byte[] salt, int iterations = 100000)
+{
+    using var pbkdf2 = new Rfc2898DeriveBytes(
+        password: masterPassword,
+        salt: salt,
+        iterations: iterations,
+        hashAlgorithm: HashAlgorithmName.SHA256
+    );
+
+    return pbkdf2.GetBytes(32); // 256-bittinen avain
+}
+
+// Salaa annetun tekstin ja palauttaa tavutaulukon (IV + ciphertext).
+static byte[] EncryptString(string plainText, byte[] key)
+{
+    using Aes aes = Aes.Create();
+    aes.Key = key;
+    aes.Mode = CipherMode.CBC;
+    aes.Padding = PaddingMode.PKCS7;
+
+    aes.GenerateIV(); // uusi IV jokaiselle salaukselle
+
+    using var encryptor = aes.CreateEncryptor();
+    byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
+    byte[] cipher = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
+
+    // yhdistetään IV + cipher samaan taulukkoon
+    byte[] output = new byte[aes.IV.Length + cipher.Length];
+    Buffer.BlockCopy(aes.IV, 0, output, 0, aes.IV.Length);
+    Buffer.BlockCopy(cipher, 0, output, aes.IV.Length, cipher.Length);
+
+    return output;
+}
+
+// Purkaa annetun IV+cipher -taulukon selkokieleksi.
+static string DecryptToString(byte[] ivPlusCipher, byte[] key)
+{
+    using Aes aes = Aes.Create();
+    aes.Key = key;
+    aes.Mode = CipherMode.CBC;
+    aes.Padding = PaddingMode.PKCS7;
+
+    int ivLen = aes.BlockSize / 8;
+    byte[] iv = new byte[ivLen];
+    byte[] cipher = new byte[ivPlusCipher.Length - ivLen];
+
+    Buffer.BlockCopy(ivPlusCipher, 0, iv, 0, ivLen);
+    Buffer.BlockCopy(ivPlusCipher, ivLen, cipher, 0, cipher.Length);
+
+    aes.IV = iv;
+    using var decryptor = aes.CreateDecryptor();
+    byte[] plain = decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
+
+    return Encoding.UTF8.GetString(plain);
+}
+
+
 }
 
 
