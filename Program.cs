@@ -1,51 +1,84 @@
 ﻿using System;
+using System.IO; // tarvitaan tiedostojen käsittelyyn
 
 class Program
 {
-    // Tämä on se "master"-salasana, jolla ohjelma avataan
-    // myöhemmin tämän voisi tallentaa jonnekin tiedostoon
+    // Master-salasana ohjelman avaamiseen
     static string masterPassword = "salainen";
+
+    // Tiedoston nimi, johon salasanat tallennetaan
+    static string dataFile = "passwords.txt";
 
     static void Main()
     {
-        // Kysytään käyttäjältä salasanaa
+        // Kysytään master-salasana
         Console.Write("Anna master-salasana: ");
         string input = Console.ReadLine();
 
-        // Jos salasana ei ole oikea, ohjelma loppuu heti
         if (input != masterPassword)
         {
             Console.WriteLine("Väärä salasana, ohjelma sulkeutuu.");
             return;
         }
 
-        // Jos salasana on oikein, mennään päävalikkoon
+        // Päävalikko
         while (true)
         {
             Console.WriteLine("\n--- Password Manager ---");
-            Console.WriteLine("1. Lisää salasana (ei vielä toteutettu)");
-            Console.WriteLine("2. Näytä salasanat (ei vielä toteutettu)");
+            Console.WriteLine("1. Lisää salasana");
+            Console.WriteLine("2. Näytä salasanat");
             Console.WriteLine("3. Lopeta");
             Console.Write("Valinta: ");
 
             string choice = Console.ReadLine();
 
-            // Valikon käsittely
             switch (choice)
             {
                 case "1":
-                    Console.WriteLine(">> Tässä vaiheessa ei vielä lisätä salasanaa");
+                    AddPassword();
                     break;
                 case "2":
-                    Console.WriteLine(">> Tässä vaiheessa ei vielä näytetä salasanoja");
+                    ShowPasswords();
                     break;
                 case "3":
                     Console.WriteLine("Ohjelma sulkeutuu...");
-                    return; // lopettaa ohjelman
+                    return;
                 default:
                     Console.WriteLine("Virheellinen valinta.");
                     break;
             }
+        }
+    }
+
+    // Metodi salasanan lisäämiselle
+    static void AddPassword()
+    {
+        Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
+        string description = Console.ReadLine();
+
+        Console.Write("Anna salasana: ");
+        string password = Console.ReadLine();
+
+        // Tallennetaan tiedostoon muodossa: kuvaus:salasana
+        File.AppendAllText(dataFile, $"{description}:{password}\n");
+        Console.WriteLine("Salasana tallennettu!");
+    }
+
+    // Metodi salasanojen näyttämiselle
+    static void ShowPasswords()
+    {
+        // Jos tiedostoa ei ole olemassa, kerrotaan käyttäjälle
+        if (!File.Exists(dataFile))
+        {
+            Console.WriteLine("Ei tallennettuja salasanoja.");
+            return;
+        }
+
+        Console.WriteLine("\n--- Tallennetut salasanat ---");
+        string[] lines = File.ReadAllLines(dataFile);
+        foreach (string line in lines)
+        {
+            Console.WriteLine(line);
         }
     }
 }
