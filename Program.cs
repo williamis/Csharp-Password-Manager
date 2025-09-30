@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Security.Cryptography;
 
 class Program
 {
@@ -54,16 +55,25 @@ class Program
     }
 
     static void AddPassword()
-    {
-        Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
-        string description = Console.ReadLine();
+{
+    Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
+    string description = Console.ReadLine();
 
-        Console.Write("Anna salasana: ");
-        string password = Console.ReadLine();
+    Console.Write("Anna salasana: ");
+    string password = Console.ReadLine();
 
-        File.AppendAllText(dataFile, $"{description}:{password}\n");
-        Console.WriteLine("Salasana tallennettu!");
-    }
+    // johdetaan avain master-salasanasta (yksinkertaisuuden vuoksi sama salt aina)
+    byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
+    byte[] key = DeriveKey(masterPassword, salt);
+
+    // salataan salasana
+    byte[] encrypted = EncryptString(password, key);
+    string encryptedBase64 = Convert.ToBase64String(encrypted);
+
+    // tallennetaan muodossa: kuvaus|SALATTU
+    File.AppendAllText(dataFile, $"{description}|{encryptedBase64}\n");
+    Console.WriteLine("Salasana tallennettu (salattuna)!");
+}
 
     static void ShowPasswords()
     {
@@ -113,13 +123,21 @@ class Program
         string save = Console.ReadLine();
 
         if (save.ToLower() == "k")
-        {
-            Console.Write("Anna kuvaus (esim. Gmail): ");
-            string description = Console.ReadLine();
+{
+    Console.Write("Anna kuvaus (esim. Gmail): ");
+    string description = Console.ReadLine();
 
-            File.AppendAllText(dataFile, $"{description}:{newPassword}\n");
-            Console.WriteLine("Salasana tallennettu!");
-        }
+    // johdetaan avain
+    byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
+    byte[] key = DeriveKey(masterPassword, salt);
+
+    // salataan generoitu salasana
+    byte[] encrypted = EncryptString(newPassword, key);
+    string encryptedBase64 = Convert.ToBase64String(encrypted);
+
+    File.AppendAllText(dataFile, $"{description}|{encryptedBase64}\n");
+    Console.WriteLine("Salasana tallennettu (salattuna)!");
+}
     }
 
     // Hakutoiminto
