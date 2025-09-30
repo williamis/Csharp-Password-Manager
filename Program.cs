@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 
 class Program
 {
@@ -10,7 +11,7 @@ class Program
     static void Main()
     {
         Console.Write("Anna master-salasana: ");
-        string input = Console.ReadLine();
+        string input = Console.ReadLine() ?? "";
 
         if (input != masterPassword)
         {
@@ -28,7 +29,7 @@ class Program
             Console.WriteLine("5. Lopeta");
             Console.Write("Valinta: ");
 
-            string choice = Console.ReadLine();
+            string choice = Console.ReadLine() ?? "";
 
             switch (choice)
             {
@@ -57,10 +58,10 @@ class Program
     static void AddPassword()
 {
     Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
-    string description = Console.ReadLine();
+    string description = Console.ReadLine() ?? "";
 
     Console.Write("Anna salasana: ");
-    string password = Console.ReadLine();
+    string password = Console.ReadLine() ?? "";
 
     // johdetaan avain master-salasanasta (yksinkertaisuuden vuoksi sama salt aina)
     byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
@@ -76,20 +77,47 @@ class Program
 }
 
     static void ShowPasswords()
+{
+    if (!File.Exists(dataFile))
     {
-        if (!File.Exists(dataFile))
+        Console.WriteLine("Ei tallennettuja salasanoja.");
+        return;
+    }
+
+    Console.WriteLine("\n--- Tallennetut salasanat ---");
+    string[] lines = File.ReadAllLines(dataFile);
+
+    foreach (string line in lines)
+    {
+        if (string.IsNullOrWhiteSpace(line)) continue;
+
+        // odotetaan muotoa: kuvaus|base64
+        var parts = line.Split('|');
+        if (parts.Length != 2)
         {
-            Console.WriteLine("Ei tallennettuja salasanoja.");
-            return;
+            Console.WriteLine(line); // vanhat selkokieliset rivit näytetään sellaisenaan
+            continue;
         }
 
-        Console.WriteLine("\n--- Tallennetut salasanat ---");
-        string[] lines = File.ReadAllLines(dataFile);
-        foreach (string line in lines)
+        string description = parts[0];
+        string encryptedBase64 = parts[1];
+
+        try
         {
-            Console.WriteLine(line);
+            byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
+            byte[] key = DeriveKey(masterPassword, salt);
+
+            byte[] encrypted = Convert.FromBase64String(encryptedBase64);
+            string decryptedPassword = DecryptToString(encrypted, key);
+
+            Console.WriteLine($"{description}: {decryptedPassword}");
+        }
+        catch
+        {
+            Console.WriteLine($"{description}: [virhe purkamisessa]");
         }
     }
+}
 
     static string GeneratePassword(int length = 12)
     {
@@ -108,7 +136,7 @@ class Program
     static void GeneratePasswordMenu()
     {
         Console.Write("Kuinka pitkä salasana luodaan? (oletus 12): ");
-        string input = Console.ReadLine();
+        string input = Console.ReadLine() ?? "";
 
         int length = 12;
         if (int.TryParse(input, out int parsedLength))
@@ -120,12 +148,12 @@ class Program
         Console.WriteLine("Luotu salasana: " + newPassword);
 
         Console.Write("Tallennetaanko tämä salasana tiedostoon? (k/e): ");
-        string save = Console.ReadLine();
+        string save = Console.ReadLine() ?? "";
 
         if (save.ToLower() == "k")
 {
     Console.Write("Anna kuvaus (esim. Gmail): ");
-    string description = Console.ReadLine();
+    string description = Console.ReadLine() ?? "";
 
     // johdetaan avain
     byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
@@ -142,34 +170,64 @@ class Program
 
     // Hakutoiminto
     static void SearchPassword()
+{
+    if (!File.Exists(dataFile))
     {
-        if (!File.Exists(dataFile))
+        Console.WriteLine("Ei tallennettuja salasanoja.");
+        return;
+    }
+
+    Console.Write("Anna hakusana (esim. Gmail): ");
+    string search = Console.ReadLine().ToLower();
+
+    string[] lines = File.ReadAllLines(dataFile);
+    bool found = false;
+
+    Console.WriteLine("\n--- Hakutulokset ---");
+    foreach (string line in lines)
+    {
+        if (string.IsNullOrWhiteSpace(line)) continue;
+
+        // odotetaan muotoa: kuvaus|base64
+        var parts = line.Split('|');
+        if (parts.Length != 2)
         {
-            Console.WriteLine("Ei tallennettuja salasanoja.");
-            return;
-        }
-
-        Console.Write("Anna hakusana (esim. Gmail): ");
-        string search = Console.ReadLine();
-
-        string[] lines = File.ReadAllLines(dataFile);
-        bool found = false;
-
-        Console.WriteLine("\n--- Hakutulokset ---");
-        foreach (string line in lines)
-        {
-            if (line.ToLower().Contains(search.ToLower()))
+            if (line.ToLower().Contains(search))
             {
-                Console.WriteLine(line);
+                Console.WriteLine(line); // näytetään vanhat rivit sellaisenaan
                 found = true;
             }
+            continue;
         }
 
-        if (!found)
+        string description = parts[0];
+        string encryptedBase64 = parts[1];
+
+        if (description.ToLower().Contains(search))
         {
-            Console.WriteLine("Ei osumia hakusanalla.");
+            try
+            {
+                byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
+                byte[] key = DeriveKey(masterPassword, salt);
+
+                byte[] encrypted = Convert.FromBase64String(encryptedBase64);
+                string decryptedPassword = DecryptToString(encrypted, key);
+
+                Console.WriteLine($"{description}: {decryptedPassword}");
+            }
+            catch
+            {
+                Console.WriteLine($"{description}: [virhe purkamisessa]");
+            }
+            found = true;
         }
     }
+
+    if (!found)
+    {
+        Console.WriteLine("Ei osumia hakusanalla.");
+    }
+}
 // ============ AES-salauksen metodit ============
 
 // Johdetaan AES-avain käyttäjän master-salasanasta.
