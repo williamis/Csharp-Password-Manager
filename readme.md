@@ -36,6 +36,7 @@ The system is built using a layered approach to ensure maintainability and stric
 
 ### Data Protection
 The master password is never stored on the disk. It exists only in memory during the session to derive temporary encryption keys. If the storage file is accessed externally, the content remains computationally infeasible to decrypt without the master key.
+
 ![alt text](image-2.png)
 ![alt text](image-3.png)
 
