@@ -7,14 +7,17 @@ The application serves as a demonstration of modern .NET development practices, 
 ## Technical Architecture
 ```mermaid
 graph TD
-    A[User Interface - CLI] -->|Master Password| B(Encryption Service - AES 256)
-    B -->|Encrypted Data| C[Data Repository - JSON]
-    C -->|Write/Read| D[(passwords.json)]
-    
-    style A fill:#0078d4,stroke:#fff,color:#fff
-    style B fill:#00bc27,stroke:#fff,color:#fff
-    style C fill:#68217a,stroke:#fff,color:#fff
-    style D fill:#f2c811,stroke:#000,color:#000
+ A[User Interface - CLI] -->|Master Password| B(Encryption Service - AES 256)
+ B -->|Encrypted Data| C[Data Repository - JSON]
+ C -->|Write/Read| D[(passwords.json)]
+
+style A fill:#0078d4,stroke:#fff,color:#fff
+ style B fill:#00bc27,stroke:#fff,color:#fff
+ style C fill:#68217a,stroke:#fff,color:#fff
+ style D fill:#f2c811,stroke:#000,color:#000
+```
+
+
 The system is built using a layered approach to ensure maintainability and strict separation of concerns:
 
 * **Core Layer:** Defines the essential interfaces (`IEncryptionService`, `IPasswordRepository`) and data models.
