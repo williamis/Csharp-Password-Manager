@@ -1,56 +1,64 @@
-# Password Manager (C#)
+# SecureVault Pro
+![alt text](image.png)
+SecureVault Pro is a high-security, console-based password management solution built with C# and .NET 9. The project focuses on professional-grade cryptographic standards and a decoupled software architecture, ensuring that sensitive information remains protected even if the physical storage file is compromised.
 
-This is a project for the *Introduction to Programming* course.  
-It is a simple **password manager application** that stores passwords securely in an encrypted text file.
+The application serves as a demonstration of modern .NET development practices, emphasizing data security, clean code, and asynchronous resource management.
 
-# Features
-- Master password protection at startup
-- Add new passwords (stored using AES encryption)
-- View all saved passwords (decrypted for display)
-- Search for passwords by service name
-- Strong password generator (cryptographically secure)
+## Technical Architecture
+graph TD
+    A[User Interface - CLI] -->|Master Password| B(Encryption Service - AES 256)
+    B -->|Encrypted Data| C[Data Repository - JSON]
+    C -->|Write/Read| D[(passwords.json)]
+    
+    style A fill:#0078d4,stroke:#fff,color:#fff
+    style B fill:#00bc27,stroke:#fff,color:#fff
+    style C fill:#68217a,stroke:#fff,color:#fff
+    style D fill:#f2c811,stroke:#000,color:#000
+The system is built using a layered approach to ensure maintainability and strict separation of concerns:
 
-# Technologies
-- C#
-- .NET 6
-- AES (Advanced Encryption Standard) in CBC mode
-- PBKDF2 (Rfc2898DeriveBytes) for key derivation
-- RandomNumberGenerator for password generation
+* **Core Layer:** Defines the essential interfaces (`IEncryptionService`, `IPasswordRepository`) and data models.
+* **Security Service:** Implements AES-256 encryption and PBKDF2 key derivation.
+* **Data Access:** Handles asynchronous JSON serialization and local file persistence.
+* **Presentation:** A CLI-based interface with secure input masking and visual feedback.
 
-# File Structure
-- `Program.cs` – main source code
-- `passwords.txt` – encrypted password storage
-- `README.md` – project documentation
 
-# Usage
-1. Clone the project from GitHub
-2. Open the folder in Visual Studio Code
-3. Run the program:
-   dotnet run
 
-Enter the master password ('salainen' by default)
+## Security Implementation
 
-Choose an option from the menu:
+### Encryption Standards
+* **AES-256-CBC:** Industry-standard encryption using 256-bit keys in Cipher Block Chaining mode.
+* **Unique Salting:** A cryptographically random 128-bit salt is generated for every entry, preventing rainbow table attacks.
+* **Key Stretching:** Implements PBKDF2 with 600,000 iterations of SHA-256 to derive encryption keys from master passwords, significantly increasing brute-force resistance.
 
-Add a password
+### Data Protection
+The master password is never stored on the disk. It exists only in memory during the session to derive temporary encryption keys. If the storage file is accessed externally, the content remains computationally infeasible to decrypt without the master key.
+![alt text](image-2.png)
+![alt text](image-3.png)
 
-Show all saved passwords
+## Usage Guide
 
-Search for a password
+### 1. Initialization
+Upon launching, the application requires a Master Password. This password acts as the primary key for all cryptographic operations in the current session.
 
-Generate a strong password
+### 2. Operational Menu
+* **Option 1: Add New Password** – Allows the user to store credentials for a new service. If the password field is left empty, the system triggers an automatic generator to create a high-entropy, 16-character string.
+![alt text](image-1.png)
+* **Option 2: List All Passwords** – Decrypts and displays all stored credentials. This view provides immediate feedback on whether the current Master Password is correct.
+* **Option 3: Search by Service** – Enables quick filtering of the database. Users can find specific credentials by entering a partial or full service name.
+* **Option 4: Exit Safely** – Clears session data and terminates the process.
 
-Exit the program
 
-Notes
 
-This program was built as a course project.
-For real-world use, it would require additional improvements such as:
+## Getting Started
 
-Secure storage of the master password
+### Prerequisites
+* .NET 9.0 SDK
 
-Unique salt and IV per entry
+### Installation and Execution
+1. Clone the repository:
+   git clone https://github.com/williamis/Csharp-Password-Manager.git
+Navigate to the project directory:
 
-Error handling and input validation
-
-A graphical user interface
+cd Csharp-Password-Manager
+Run the application:
+dotnet run

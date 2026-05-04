@@ -1,309 +1,144 @@
-﻿using System;
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
+﻿using PasswordManager.Core;
 
 class Program
 {
-    static string masterPassword = "salainen";
-    static string dataFile = "passwords.txt";
+    private static IEncryptionService _encryption = null!;
+    private static IPasswordRepository _repository = null!;
 
-    static void Main()
+    static async Task Main()
     {
-        Console.Write("Anna master-salasana: ");
-        string input = Console.ReadLine() ?? "";
+        _encryption = new AesEncryptionService();
+        _repository = new FilePasswordRepository("passwords.json");
 
-        if (input != masterPassword)
-        {
-            Console.WriteLine("Väärä salasana, ohjelma sulkeutuu.");
-            return;
-        }
+        Console.Title = "SecureVault Pro v3.1";
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("=== SecureVault Pro v3.1 ===");
+        Console.ResetColor();
+
+        Console.Write("Enter Master Password: ");
+        string masterPassword = ReadMaskedPassword();
+
+        if (string.IsNullOrWhiteSpace(masterPassword)) return;
 
         while (true)
         {
-            Console.WriteLine("\n--- Password Manager ---");
-            Console.WriteLine("1. Lisää salasana");
-            Console.WriteLine("2. Näytä salasanat");
-            Console.WriteLine("3. Luo vahva salasana");
-            Console.WriteLine("4. Hae salasana");
-            Console.WriteLine("5. Lopeta");
-            Console.Write("Valinta: ");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\n--- Main Menu ---");
+            Console.WriteLine("1. Add New Password");
+            Console.WriteLine("2. View All Passwords");
+            Console.WriteLine("3. Search by Service");
+            Console.WriteLine("4. Exit");
+            Console.ResetColor();
+            Console.Write("Selection: ");
 
-            string choice = Console.ReadLine() ?? "";
-
-            switch (choice)
+            switch (Console.ReadLine())
             {
-                case "1":
-                    AddPassword();
-                    break;
-                case "2":
-                    ShowPasswords();
-                    break;
-                case "3":
-                    GeneratePasswordMenu();
-                    break;
-                case "4":
-                    SearchPassword();
-                    break;
-                case "5":
-                    Console.WriteLine("Ohjelma sulkeutuu...");
+                case "1": await AddPasswordAsync(masterPassword); break;
+                case "2": await ShowPasswordsAsync(masterPassword); break;
+                case "3": await SearchPasswordsAsync(masterPassword); break;
+                case "4": 
+                    Console.WriteLine("Closing safely...");
                     return;
-                default:
-                    Console.WriteLine("Virheellinen valinta.");
-                    break;
+                default: Console.WriteLine("Invalid choice."); break;
             }
         }
     }
 
-    static void AddPassword()
-{
-    Console.Write("Anna palvelun kuvaus (esim. Gmail): ");
-    string description = Console.ReadLine() ?? "";
-
-    Console.Write("Anna salasana: ");
-    string password = Console.ReadLine() ?? "";
-
-    // johdetaan avain master-salasanasta (yksinkertaisuuden vuoksi sama salt aina)
-    byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
-    byte[] key = DeriveKey(masterPassword, salt);
-
-    // salataan salasana
-    byte[] encrypted = EncryptString(password, key);
-    string encryptedBase64 = Convert.ToBase64String(encrypted);
-
-    // tallennetaan muodossa: kuvaus|SALATTU
-    File.AppendAllText(dataFile, $"{description}|{encryptedBase64}\n");
-    Console.WriteLine("Salasana tallennettu (salattuna)!");
-}
-
-    static void ShowPasswords()
-{
-    if (!File.Exists(dataFile))
+    private static async Task AddPasswordAsync(string masterPassword)
     {
-        Console.WriteLine("Ei tallennettuja salasanoja.");
-        return;
-    }
+        Console.Write("\nService (e.g. Google): ");
+        string desc = Console.ReadLine() ?? "Unknown";
+        
+        Console.Write("Password (leave empty to generate): ");
+        string pwd = Console.ReadLine() ?? "";
 
-    Console.WriteLine("\n--- Tallennetut salasanat ---");
-    string[] lines = File.ReadAllLines(dataFile);
-
-    foreach (string line in lines)
-    {
-        if (string.IsNullOrWhiteSpace(line)) continue;
-
-        // odotetaan muotoa: kuvaus|base64
-        var parts = line.Split('|');
-        if (parts.Length != 2)
+        if (string.IsNullOrWhiteSpace(pwd))
         {
-            Console.WriteLine(line); // vanhat selkokieliset rivit näytetään sellaisenaan
-            continue;
+            pwd = GenerateStrongPassword();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"Generated Password: {pwd}");
+            Console.ResetColor();
         }
 
-        string description = parts[0];
-        string encryptedBase64 = parts[1];
+        var aesSvc = (AesEncryptionService)_encryption;
+        byte[] salt = aesSvc.GenerateRandomSalt();
+        byte[] key = _encryption.DeriveKey(masterPassword, salt);
+        byte[] encrypted = _encryption.Encrypt(pwd, key);
 
-        try
-        {
-            byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
-            byte[] key = DeriveKey(masterPassword, salt);
-
-            byte[] encrypted = Convert.FromBase64String(encryptedBase64);
-            string decryptedPassword = DecryptToString(encrypted, key);
-
-            Console.WriteLine($"{description}: {decryptedPassword}");
-        }
-        catch
-        {
-            Console.WriteLine($"{description}: [virhe purkamisessa]");
-        }
-    }
-}
-
-    static string GeneratePassword(int length = 12, bool useUpper = true, bool useLower = true, bool useDigits = true, bool useSymbols = true)
-{
-    const string lowers = "abcdefghijklmnopqrstuvwxyz";
-    const string uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const string digits = "0123456789";
-    const string symbols = "!@#$%^&*()-_=+[]{};:,.?/";
-
-    string alphabet = "";
-    if (useLower) alphabet += lowers;
-    if (useUpper) alphabet += uppers;
-    if (useDigits) alphabet += digits;
-    if (useSymbols) alphabet += symbols;
-
-    if (string.IsNullOrEmpty(alphabet))
-        alphabet = lowers; // varmistus, ettei jää tyhjäksi
-
-    // käytetään kryptografista RNG:tä
-    var bytes = new byte[length];
-    RandomNumberGenerator.Fill(bytes);
-
-    var sb = new StringBuilder(length);
-    for (int i = 0; i < length; i++)
-    {
-        int idx = bytes[i] % alphabet.Length;
-        sb.Append(alphabet[idx]);
-    }
-    return sb.ToString();
-}
-
-    static void GeneratePasswordMenu()
-    {
-        Console.Write("Kuinka pitkä salasana luodaan? (oletus 12): ");
-        string input = Console.ReadLine() ?? "";
-
-        int length = 12;
-        if (int.TryParse(input, out int parsedLength))
-        {
-            length = parsedLength;
-        }
-
-        string newPassword = GeneratePassword(length);
-        Console.WriteLine("Luotu salasana: " + newPassword);
-
-        Console.Write("Tallennetaanko tämä salasana tiedostoon? (k/e): ");
-        string save = Console.ReadLine() ?? "";
-
-        if (save.ToLower() == "k")
-{
-    Console.Write("Anna kuvaus (esim. Gmail): ");
-    string description = Console.ReadLine() ?? "";
-
-    // johdetaan avain
-    byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
-    byte[] key = DeriveKey(masterPassword, salt);
-
-    // salataan generoitu salasana
-    byte[] encrypted = EncryptString(newPassword, key);
-    string encryptedBase64 = Convert.ToBase64String(encrypted);
-
-    File.AppendAllText(dataFile, $"{description}|{encryptedBase64}\n");
-    Console.WriteLine("Salasana tallennettu (salattuna)!");
-}
+        await _repository.AddAsync(new PasswordEntry(
+            desc, 
+            Convert.ToBase64String(encrypted), 
+            Convert.ToBase64String(salt)
+        ));
+        
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Successfully secured!");
+        Console.ResetColor();
     }
 
-    // Hakutoiminto
-    static void SearchPassword()
-{
-    if (!File.Exists(dataFile))
+    private static async Task ShowPasswordsAsync(string masterPassword)
     {
-        Console.WriteLine("Ei tallennettuja salasanoja.");
-        return;
+        var entries = await _repository.GetAllAsync();
+        DisplayEntries(entries, masterPassword);
     }
 
-    Console.Write("Anna hakusana (esim. Gmail): ");
-    string search = Console.ReadLine().ToLower();
-
-    string[] lines = File.ReadAllLines(dataFile);
-    bool found = false;
-
-    Console.WriteLine("\n--- Hakutulokset ---");
-    foreach (string line in lines)
+    private static async Task SearchPasswordsAsync(string masterPassword)
     {
-        if (string.IsNullOrWhiteSpace(line)) continue;
+        Console.Write("\nEnter search term: ");
+        string query = (Console.ReadLine() ?? "").ToLower();
 
-        // odotetaan muotoa: kuvaus|base64
-        var parts = line.Split('|');
-        if (parts.Length != 2)
+        var allEntries = await _repository.GetAllAsync();
+        var matches = allEntries.Where(e => e.Description.ToLower().Contains(query));
+
+        DisplayEntries(matches, masterPassword);
+    }
+
+    private static void DisplayEntries(IEnumerable<PasswordEntry> entries, string masterPassword)
+    {
+        Console.WriteLine("\n--- Credentials ---");
+        if (!entries.Any()) Console.WriteLine("No entries found.");
+
+        foreach (var entry in entries)
         {
-            if (line.ToLower().Contains(search))
-            {
-                Console.WriteLine(line); // näytetään vanhat rivit sellaisenaan
-                found = true;
+            try {
+                byte[] salt = Convert.FromBase64String(entry.SaltBase64);
+                byte[] key = _encryption.DeriveKey(masterPassword, salt);
+                byte[] cipher = Convert.FromBase64String(entry.EncryptedBase64);
+                string decrypted = _encryption.Decrypt(cipher, key);
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("[+] ");
+                Console.ResetColor();
+                Console.WriteLine($"{entry.Description.PadRight(15)} : {decrypted}");
+            } catch {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[!] {entry.Description.PadRight(15)} : [DECRYPTION FAILED]");
+                Console.ResetColor();
             }
-            continue;
-        }
-
-        string description = parts[0];
-        string encryptedBase64 = parts[1];
-
-        if (description.ToLower().Contains(search))
-        {
-            try
-            {
-                byte[] salt = System.Text.Encoding.UTF8.GetBytes("yksinkertainen_suola");
-                byte[] key = DeriveKey(masterPassword, salt);
-
-                byte[] encrypted = Convert.FromBase64String(encryptedBase64);
-                string decryptedPassword = DecryptToString(encrypted, key);
-
-                Console.WriteLine($"{description}: {decryptedPassword}");
-            }
-            catch
-            {
-                Console.WriteLine($"{description}: [virhe purkamisessa]");
-            }
-            found = true;
         }
     }
 
-    if (!found)
+    private static string GenerateStrongPassword(int length = 16)
     {
-        Console.WriteLine("Ei osumia hakusanalla.");
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+    private static string ReadMaskedPassword()
+    {
+        var pwd = new System.Text.StringBuilder();
+        while (true) {
+            var i = Console.ReadKey(true);
+            if (i.Key == ConsoleKey.Enter) { Console.WriteLine(); break; }
+            if (i.Key == ConsoleKey.Backspace && pwd.Length > 0) {
+                pwd.Remove(pwd.Length - 1, 1); Console.Write("\b \b");
+            } else if (!char.IsControl(i.KeyChar)) {
+                pwd.Append(i.KeyChar); Console.Write("*");
+            }
+        }
+        return pwd.ToString();
     }
 }
-// ============ AES-salauksen metodit ============
-
-// Johdetaan AES-avain käyttäjän master-salasanasta.
-// Tämä tehdään PBKDF2-algoritmilla (Rfc2898DeriveBytes).
-static byte[] DeriveKey(string masterPassword, byte[] salt, int iterations = 100000)
-{
-    using var pbkdf2 = new Rfc2898DeriveBytes(
-        password: masterPassword,
-        salt: salt,
-        iterations: iterations,
-        hashAlgorithm: HashAlgorithmName.SHA256
-    );
-
-    return pbkdf2.GetBytes(32); // 256-bittinen avain
-}
-
-// Salaa annetun tekstin ja palauttaa tavutaulukon (IV + ciphertext).
-static byte[] EncryptString(string plainText, byte[] key)
-{
-    using Aes aes = Aes.Create();
-    aes.Key = key;
-    aes.Mode = CipherMode.CBC;
-    aes.Padding = PaddingMode.PKCS7;
-
-    aes.GenerateIV(); // uusi IV jokaiselle salaukselle
-
-    using var encryptor = aes.CreateEncryptor();
-    byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
-    byte[] cipher = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
-
-    // yhdistetään IV + cipher samaan taulukkoon
-    byte[] output = new byte[aes.IV.Length + cipher.Length];
-    Buffer.BlockCopy(aes.IV, 0, output, 0, aes.IV.Length);
-    Buffer.BlockCopy(cipher, 0, output, aes.IV.Length, cipher.Length);
-
-    return output;
-}
-
-// Purkaa annetun IV+cipher -taulukon selkokieleksi.
-static string DecryptToString(byte[] ivPlusCipher, byte[] key)
-{
-    using Aes aes = Aes.Create();
-    aes.Key = key;
-    aes.Mode = CipherMode.CBC;
-    aes.Padding = PaddingMode.PKCS7;
-
-    int ivLen = aes.BlockSize / 8;
-    byte[] iv = new byte[ivLen];
-    byte[] cipher = new byte[ivPlusCipher.Length - ivLen];
-
-    Buffer.BlockCopy(ivPlusCipher, 0, iv, 0, ivLen);
-    Buffer.BlockCopy(ivPlusCipher, ivLen, cipher, 0, cipher.Length);
-
-    aes.IV = iv;
-    using var decryptor = aes.CreateDecryptor();
-    byte[] plain = decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
-
-    return Encoding.UTF8.GetString(plain);
-}
-
-
-}
-
-

@@ -1,0 +1,13 @@
+# Ohitetaan ohjelman tallentamat salasanat
+passwords.json
+
+# Ohitetaan kääntäjän luomat väliaikaiset tiedostot ja kansiot
+bin/
+obj/
+
+# Ohitetaan VS Coden omat asetukset
+.vscode/
+
+# Ohitetaan käyttöjärjestelmän roskatiedostot
+.DS_Store
+Thumbs.db
