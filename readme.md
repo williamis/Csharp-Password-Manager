@@ -14,7 +14,7 @@ graph TD
     style A fill:#0078d4,stroke:#fff,color:#fff
     style B fill:#00bc27,stroke:#fff,color:#fff
     style C fill:#68217a,stroke:#fff,color:#fff
-    style D fill:#f2c811,stroke:#000,color:#000
+    style D fill:#f2c811,stroke:#000,color:#000```
 The system is built using a layered approach to ensure maintainability and strict separation of concerns:
 
 * **Core Layer:** Defines the essential interfaces (`IEncryptionService`, `IPasswordRepository`) and data models.
