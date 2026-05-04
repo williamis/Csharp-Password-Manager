@@ -52,19 +52,3 @@ Upon launching, the application requires a Master Password. This password acts a
 * **Option 2: List All Passwords** – Decrypts and displays all stored credentials. This view provides immediate feedback on whether the current Master Password is correct.
 * **Option 3: Search by Service** – Enables quick filtering of the database. Users can find specific credentials by entering a partial or full service name.
 * **Option 4: Exit** – Clears session data and terminates the process.
-
-
-
-## Getting Started
-
-### Prerequisites
-* .NET 9.0 SDK
-
-### Installation and Execution
-1. Clone the repository:
-   git clone https://github.com/williamis/Csharp-Password-Manager.git
-Navigate to the project directory:
-
-cd Csharp-Password-Manager
-Run the application:
-dotnet run
