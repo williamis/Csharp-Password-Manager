@@ -5,6 +5,7 @@ SecureVault Pro is a high-security, console-based password management solution b
 The application serves as a demonstration of modern .NET development practices, emphasizing data security, clean code, and asynchronous resource management.
 
 ## Technical Architecture
+```mermaid
 graph TD
     A[User Interface - CLI] -->|Master Password| B(Encryption Service - AES 256)
     B -->|Encrypted Data| C[Data Repository - JSON]
