@@ -1,5 +1,6 @@
 # SecureVault Pro
 ![alt text](image.png)
+
 SecureVault Pro is a high-security, console-based password management solution built with C# and .NET 9. The project focuses on professional-grade cryptographic standards and a decoupled software architecture, ensuring that sensitive information remains protected even if the physical storage file is compromised.
 
 The application serves as a demonstration of modern .NET development practices, emphasizing data security, clean code, and asynchronous resource management.
@@ -50,7 +51,7 @@ Upon launching, the application requires a Master Password. This password acts a
 ![alt text](image-1.png)
 * **Option 2: List All Passwords** – Decrypts and displays all stored credentials. This view provides immediate feedback on whether the current Master Password is correct.
 * **Option 3: Search by Service** – Enables quick filtering of the database. Users can find specific credentials by entering a partial or full service name.
-* **Option 4: Exit Safely** – Clears session data and terminates the process.
+* **Option 4: Exit** – Clears session data and terminates the process.
 
 
 
